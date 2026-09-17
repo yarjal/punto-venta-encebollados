@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --bg: #1B211D;
@@ -574,36 +576,85 @@
 <script>
 (function(){
 
-  var STORAGE_KEY = "pos_productos_v1";
+  var firebaseConfig = {
+    apiKey: "AIzaSyBAL_1KgUhVKMDaa7R1SOOIbqp2Nf1czHo",
+    authDomain: "luiguies-2f628.firebaseapp.com",
+    projectId: "luiguies-2f628",
+    storageBucket: "luiguies-2f628.firebasestorage.app",
+    messagingSenderId: "362296915404",
+    appId: "1:362296915404:web:78874f2afc20f36b2d1969",
+    measurementId: "G-92T7GDZMQN"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+  var coleccionProductos = db.collection("pos_productos");
 
   var productosSemilla = [
-    { id: "p1", nombre: "Encebollado pequeño", precioServir: 2.00, precioLlevar: 2.25 },
-    { id: "p2", nombre: "Encebollado grande",   precioServir: 2.50, precioLlevar: 2.75 },
-    { id: "p3", nombre: "Encebollado llena",    precioServir: 3.75, precioLlevar: 4.00 }
+    { nombre: "Encebollado pequeño", precioServir: 2.00, precioLlevar: 2.25 },
+    { nombre: "Encebollado grande",   precioServir: 2.50, precioLlevar: 2.75 },
+    { nombre: "Encebollado llena",    precioServir: 3.75, precioLlevar: 4.00 }
   ];
 
   var productos = [];
   var cantidades = {};
   var modo = "servir";
+  var productosListos = false;
 
-  function cargarProductos(){
-    try{
-      var guardado = localStorage.getItem(STORAGE_KEY);
-      if(guardado){
-        productos = JSON.parse(guardado);
-      } else {
-        productos = productosSemilla;
-        guardarProductos();
+  function escucharProductos(){
+    coleccionProductos.orderBy("creado", "asc").onSnapshot(function(snapshot){
+      productos = snapshot.docs.map(function(doc){
+        var datos = doc.data();
+        return {
+          id: doc.id,
+          nombre: datos.nombre,
+          precioServir: datos.precioServir,
+          precioLlevar: datos.precioLlevar
+        };
+      });
+
+      if(!productosListos && productos.length === 0){
+        sembrarProductosIniciales();
       }
-    } catch(e){
-      productos = productosSemilla;
-    }
+
+      productosListos = true;
+      renderGridProductos();
+      renderTicket();
+      if(vistaProductos.classList.contains("active")){
+        renderTablaProductos();
+      }
+    }, function(error){
+      mostrarToast("No se pudo conectar con Firestore.");
+      console.error(error);
+    });
   }
 
-  function guardarProductos(){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(productos));
-    } catch(e){ /* almacenamiento no disponible, se continúa solo en memoria */ }
+  function sembrarProductosIniciales(){
+    productosSemilla.forEach(function(producto){
+      coleccionProductos.add({
+        nombre: producto.nombre,
+        precioServir: producto.precioServir,
+        precioLlevar: producto.precioLlevar,
+        creado: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(function(error){ console.error(error); });
+    });
+  }
+
+  function agregarProductoRemoto(nombre, precioServir, precioLlevar){
+    return coleccionProductos.add({
+      nombre: nombre,
+      precioServir: precioServir,
+      precioLlevar: precioLlevar,
+      creado: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  function actualizarProductoRemoto(id, cambios){
+    return coleccionProductos.doc(id).update(cambios);
+  }
+
+  function eliminarProductoRemoto(id){
+    return coleccionProductos.doc(id).delete();
   }
 
   function formatoMoneda(valor){
@@ -844,10 +895,11 @@
       inputNombre.type = "text";
       inputNombre.value = producto.nombre;
       inputNombre.addEventListener("change", function(){
-        producto.nombre = inputNombre.value.trim() || producto.nombre;
-        guardarProductos();
-        renderGridProductos();
-        renderTicket();
+        var nuevoNombre = inputNombre.value.trim() || producto.nombre;
+        actualizarProductoRemoto(producto.id, { nombre: nuevoNombre }).catch(function(error){
+          mostrarToast("No se pudo guardar el nombre.");
+          console.error(error);
+        });
       });
       colNombre.appendChild(inputNombre);
 
@@ -862,10 +914,10 @@
       inputServir.value = producto.precioServir;
       inputServir.addEventListener("change", function(){
         var valor = parseFloat(inputServir.value);
-        producto.precioServir = isNaN(valor) ? 0 : valor;
-        guardarProductos();
-        renderGridProductos();
-        renderTicket();
+        actualizarProductoRemoto(producto.id, { precioServir: isNaN(valor) ? 0 : valor }).catch(function(error){
+          mostrarToast("No se pudo guardar el precio.");
+          console.error(error);
+        });
       });
       colServir.appendChild(labelServir);
       colServir.appendChild(inputServir);
@@ -881,10 +933,10 @@
       inputLlevar.value = producto.precioLlevar;
       inputLlevar.addEventListener("change", function(){
         var valor = parseFloat(inputLlevar.value);
-        producto.precioLlevar = isNaN(valor) ? 0 : valor;
-        guardarProductos();
-        renderGridProductos();
-        renderTicket();
+        actualizarProductoRemoto(producto.id, { precioLlevar: isNaN(valor) ? 0 : valor }).catch(function(error){
+          mostrarToast("No se pudo guardar el precio.");
+          console.error(error);
+        });
       });
       colLlevar.appendChild(labelLlevar);
       colLlevar.appendChild(inputLlevar);
@@ -895,13 +947,13 @@
       btnEliminar.className = "btn-eliminar";
       btnEliminar.textContent = "Eliminar";
       btnEliminar.addEventListener("click", function(){
-        productos = productos.filter(function(p){ return p.id !== producto.id; });
-        delete cantidades[producto.id];
-        guardarProductos();
-        renderTablaProductos();
-        renderGridProductos();
-        renderTicket();
-        mostrarToast("Producto eliminado.");
+        eliminarProductoRemoto(producto.id).then(function(){
+          delete cantidades[producto.id];
+          mostrarToast("Producto eliminado.");
+        }).catch(function(error){
+          mostrarToast("No se pudo eliminar el producto.");
+          console.error(error);
+        });
       });
       colEliminar.appendChild(btnEliminar);
 
@@ -931,18 +983,16 @@
       return;
     }
 
-    var id = "p" + Date.now();
-    productos.push({ id: id, nombre: nombre, precioServir: servir, precioLlevar: llevar });
-    guardarProductos();
-
-    nombreInput.value = "";
-    servirInput.value = "";
-    llevarInput.value = "";
-    nombreInput.focus();
-
-    renderTablaProductos();
-    renderGridProductos();
-    mostrarToast("Producto agregado.");
+    agregarProductoRemoto(nombre, servir, llevar).then(function(){
+      nombreInput.value = "";
+      servirInput.value = "";
+      llevarInput.value = "";
+      nombreInput.focus();
+      mostrarToast("Producto agregado.");
+    }).catch(function(error){
+      mostrarToast("No se pudo agregar el producto.");
+      console.error(error);
+    });
   });
 
   /* ---------- Fecha ---------- */
@@ -956,10 +1006,9 @@
 
   /* ---------- Inicio ---------- */
 
-  cargarProductos();
   pintarFecha();
-  renderGridProductos();
-  renderTicket();
+  gridProductos.innerHTML = '<div class="vacio">Cargando productos…</div>';
+  escucharProductos();
 
 })();
 </script>
