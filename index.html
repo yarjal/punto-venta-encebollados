@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Punto de Venta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #1B211D;
+    --surface: #232B25;
+    --surface-2: #2A332B;
+    --accent: #B8834D;
+    --accent-soft: rgba(184,131,77,0.16);
+    --accent-dim: rgba(184,131,77,0.55);
+    --text: #F1EDE4;
+    --text-muted: #9BA79C;
+    --border: rgba(241,237,228,0.10);
+    --danger: #C0604B;
+    --success: #6FA97A;
+    --radius-s: 6px;
+    --radius-m: 10px;
+    --serif: "Fraunces", "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body{
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::selection{ background: var(--accent-soft); }
+
+  button{
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  input{
+    font-family: inherit;
+  }
+
+  /* ---------- Header ---------- */
+
+  header{
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .brand{
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .brand h1{
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+
+  .brand span{
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  nav.tabs{
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    padding: 4px;
+    border-radius: var(--radius-m);
+    border: 1px solid var(--border);
+  }
+
+  nav.tabs button{
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: var(--radius-s);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  nav.tabs button.active{
+    background: var(--accent);
+    color: #201207;
+  }
+
+  .mode-switch{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
+  }
+
+  .mode-switch button{
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 999px;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .mode-switch button.active{
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  /* ---------- Layout ---------- */
+
+  main{
+    flex: 1;
+    display: none;
+    width: 100%;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 28px;
+  }
+
+  main.active{ display: block; }
+
+  #vista-vender{
+    display: none;
+    gap: 28px;
+    grid-template-columns: 1fr 340px;
+  }
+
+  #vista-vender.active{ display: grid; }
+
+  @media (max-width: 860px){
+    #vista-vender.active{ grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Product grid ---------- */
+
+  .grid-productos{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+    align-content: start;
+  }
+
+  .card-producto{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s ease;
+  }
+
+  .card-producto.con-cantidad{
+    border-color: var(--accent-dim);
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  }
+
+  .card-producto .nombre{
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .card-producto .precio{
+    font-family: var(--serif);
+    font-size: 20px;
+    color: var(--accent);
+  }
+
+  .stepper{
+    margin-top: auto;
+    display: grid;
+    grid-template-columns: 34px 1fr 34px;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    overflow: hidden;
+  }
+
+  .stepper button{
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 16px;
+    height: 34px;
+    transition: background 0.15s ease;
+  }
+
+  .stepper button:hover{ background: var(--surface-2); }
+
+  .stepper .cantidad{
+    text-align: center;
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* ---------- Ticket ---------- */
+
+  .ticket{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    padding: 22px;
+    position: sticky;
+    top: 92px;
+    height: fit-content;
+    background-image:
+      linear-gradient(90deg, var(--bg) 50%, transparent 0%),
+      linear-gradient(90deg, var(--bg) 50%, transparent 0%);
+    background-position: bottom, top;
+    background-size: 12px 2px;
+    background-repeat: repeat-x;
+  }
+
+  .ticket h2{
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+
+  .ticket .linea-vacia{
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 6px 0;
+  }
+
+  .linea-item{
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13.5px;
+    padding: 7px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .linea-item .desc{ color: var(--text); }
+  .linea-item .desc .cant{ color: var(--text-muted); }
+  .linea-item .subtotal{ color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .total-row{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .total-row .label{
+    font-size: 13px;
+    color: var(--text-muted);
+    text-transform: none;
+  }
+
+  .total-row .valor{
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 600;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .campo-pago{
+    margin-top: 18px;
+  }
+
+  .campo-pago label{
+    display: block;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .campo-pago input{
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    color: var(--text);
+    font-size: 16px;
+    padding: 10px 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .campo-pago input:focus{
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+
+  .vuelto-row{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 14px;
+  }
+
+  .vuelto-row .valor{
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .vuelto-row .valor.ok{ color: var(--success); }
+  .vuelto-row .valor.falta{ color: var(--danger); }
+
+  .acciones-ticket{
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .btn{
+    border: none;
+    border-radius: var(--radius-s);
+    padding: 11px 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    flex: 1;
+    transition: opacity 0.15s ease;
+  }
+
+  .btn:hover{ opacity: 0.88; }
+
+  .btn.primario{ background: var(--accent); color: #201207; }
+  .btn.secundario{ background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+
+  /* ---------- Productos (gestión) ---------- */
+
+  .panel-agregar{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .panel-agregar h2{
+    font-family: var(--serif);
+    font-size: 17px;
+    margin: 0 0 16px;
+  }
+
+  .fila-form{
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  @media (max-width: 700px){
+    .fila-form{ grid-template-columns: 1fr 1fr; }
+  }
+
+  .campo label{
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .campo input{
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    color: var(--text);
+    font-size: 14px;
+    padding: 9px 10px;
+  }
+
+  .campo input:focus{
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+
+  .tabla-productos{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .fila-producto{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  @media (max-width: 700px){
+    .fila-producto{ grid-template-columns: 1fr 1fr; }
+    .fila-producto .col-eliminar{ grid-column: span 2; }
+  }
+
+  .fila-producto input[type="text"],
+  .fila-producto input[type="number"]{
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    color: var(--text);
+    font-size: 14px;
+    padding: 8px 10px;
+  }
+
+  .fila-producto input:focus{
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+
+  .fila-producto .mini-label{
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .btn-eliminar{
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--danger);
+    border-radius: var(--radius-s);
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .btn-eliminar:hover{ background: rgba(192,96,75,0.12); }
+
+  .vacio{
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 60px 20px;
+  }
+
+  .toast{
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface-2);
+    border: 1px solid var(--accent-dim);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: var(--radius-s);
+    font-size: 13.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 50;
+  }
+
+  .toast.mostrar{
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Punto de Venta</h1>
+    <span id="fecha-hoy"></span>
+  </div>
+  <nav class="tabs">
+    <button id="tab-vender" class="active">Vender</button>
+    <button id="tab-productos">Productos</button>
+  </nav>
+  <div class="mode-switch">
+    <button id="modo-servir" class="active">Servirse</button>
+    <button id="modo-llevar">Para llevar</button>
+  </div>
+</header>
+
+<main id="vista-vender" class="active">
+  <section class="grid-productos" id="grid-productos"></section>
+
+  <aside class="ticket">
+    <h2>Pedido actual</h2>
+    <div id="lineas-ticket"><div class="linea-vacia">Aún no has elegido productos.</div></div>
+
+    <div class="total-row">
+      <span class="label">Total</span>
+      <span class="valor" id="total-valor">$0.00</span>
+    </div>
+
+    <div class="campo-pago">
+      <label for="input-pago">Efectivo recibido</label>
+      <input type="number" id="input-pago" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+    </div>
+
+    <div class="vuelto-row">
+      <span class="label">Vuelto</span>
+      <span class="valor ok" id="vuelto-valor">$0.00</span>
+    </div>
+
+    <div class="acciones-ticket">
+      <button class="btn secundario" id="btn-limpiar">Limpiar</button>
+      <button class="btn primario" id="btn-cobrar">Cobrar</button>
+    </div>
+  </aside>
+</main>
+
+<main id="vista-productos">
+  <div class="panel-agregar">
+    <h2>Nuevo producto</h2>
+    <div class="fila-form">
+      <div class="campo">
+        <label for="nuevo-nombre">Nombre</label>
+        <input type="text" id="nuevo-nombre" placeholder="Ej. Encebollado mediano">
+      </div>
+      <div class="campo">
+        <label for="nuevo-servir">Precio servirse</label>
+        <input type="number" id="nuevo-servir" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="campo">
+        <label for="nuevo-llevar">Precio para llevar</label>
+        <input type="number" id="nuevo-llevar" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <button class="btn primario" id="btn-agregar-producto" style="height:38px;">Agregar producto</button>
+    </div>
+  </div>
+
+  <div class="tabla-productos" id="tabla-productos"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+
+  var STORAGE_KEY = "pos_productos_v1";
+
+  var productosSemilla = [
+    { id: "p1", nombre: "Encebollado pequeño", precioServir: 2.00, precioLlevar: 2.25 },
+    { id: "p2", nombre: "Encebollado grande",   precioServir: 2.50, precioLlevar: 2.75 },
+    { id: "p3", nombre: "Encebollado llena",    precioServir: 3.75, precioLlevar: 4.00 }
+  ];
+
+  var productos = [];
+  var cantidades = {};
+  var modo = "servir";
+
+  function cargarProductos(){
+    try{
+      var guardado = localStorage.getItem(STORAGE_KEY);
+      if(guardado){
+        productos = JSON.parse(guardado);
+      } else {
+        productos = productosSemilla;
+        guardarProductos();
+      }
+    } catch(e){
+      productos = productosSemilla;
+    }
+  }
+
+  function guardarProductos(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(productos));
+    } catch(e){ /* almacenamiento no disponible, se continúa solo en memoria */ }
+  }
+
+  function formatoMoneda(valor){
+    return "$" + valor.toFixed(2);
+  }
+
+  function precioDe(producto){
+    return modo === "servir" ? producto.precioServir : producto.precioLlevar;
+  }
+
+  function mostrarToast(texto){
+    var toast = document.getElementById("toast");
+    toast.textContent = texto;
+    toast.classList.add("mostrar");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function(){ toast.classList.remove("mostrar"); }, 1800);
+  }
+
+  /* ---------- Navegación de pestañas ---------- */
+
+  var tabVender = document.getElementById("tab-vender");
+  var tabProductos = document.getElementById("tab-productos");
+  var vistaVender = document.getElementById("vista-vender");
+  var vistaProductos = document.getElementById("vista-productos");
+
+  function irAVender(){
+    tabVender.classList.add("active");
+    tabProductos.classList.remove("active");
+    vistaVender.classList.add("active");
+    vistaProductos.classList.remove("active");
+  }
+
+  function irAProductos(){
+    tabProductos.classList.add("active");
+    tabVender.classList.remove("active");
+    vistaProductos.classList.add("active");
+    vistaVender.classList.remove("active");
+    renderTablaProductos();
+  }
+
+  tabVender.addEventListener("click", irAVender);
+  tabProductos.addEventListener("click", irAProductos);
+
+  /* ---------- Servir / Llevar ---------- */
+
+  var btnServir = document.getElementById("modo-servir");
+  var btnLlevar = document.getElementById("modo-llevar");
+
+  btnServir.addEventListener("click", function(){
+    modo = "servir";
+    btnServir.classList.add("active");
+    btnLlevar.classList.remove("active");
+    renderGridProductos();
+    renderTicket();
+  });
+
+  btnLlevar.addEventListener("click", function(){
+    modo = "llevar";
+    btnLlevar.classList.add("active");
+    btnServir.classList.remove("active");
+    renderGridProductos();
+    renderTicket();
+  });
+
+  /* ---------- Grilla de venta ---------- */
+
+  var gridProductos = document.getElementById("grid-productos");
+
+  function cambiarCantidad(id, delta){
+    var actual = cantidades[id] || 0;
+    var nueva = Math.max(0, actual + delta);
+    cantidades[id] = nueva;
+    renderGridProductos();
+    renderTicket();
+  }
+
+  function renderGridProductos(){
+    gridProductos.innerHTML = "";
+
+    if(productos.length === 0){
+      gridProductos.innerHTML = '<div class="vacio">No hay productos todavía. Agrégalos en la sección "Productos".</div>';
+      return;
+    }
+
+    productos.forEach(function(producto){
+      var cantidad = cantidades[producto.id] || 0;
+
+      var card = document.createElement("div");
+      card.className = "card-producto" + (cantidad > 0 ? " con-cantidad" : "");
+
+      var nombre = document.createElement("div");
+      nombre.className = "nombre";
+      nombre.textContent = producto.nombre;
+
+      var precio = document.createElement("div");
+      precio.className = "precio";
+      precio.textContent = formatoMoneda(precioDe(producto));
+
+      var stepper = document.createElement("div");
+      stepper.className = "stepper";
+
+      var btnMenos = document.createElement("button");
+      btnMenos.textContent = "–";
+      btnMenos.addEventListener("click", function(){ cambiarCantidad(producto.id, -1); });
+
+      var spanCantidad = document.createElement("div");
+      spanCantidad.className = "cantidad";
+      spanCantidad.textContent = cantidad;
+
+      var btnMas = document.createElement("button");
+      btnMas.textContent = "+";
+      btnMas.addEventListener("click", function(){ cambiarCantidad(producto.id, 1); });
+
+      stepper.appendChild(btnMenos);
+      stepper.appendChild(spanCantidad);
+      stepper.appendChild(btnMas);
+
+      card.appendChild(nombre);
+      card.appendChild(precio);
+      card.appendChild(stepper);
+      gridProductos.appendChild(card);
+    });
+  }
+
+  /* ---------- Ticket ---------- */
+
+  var lineasTicket = document.getElementById("lineas-ticket");
+  var totalValor = document.getElementById("total-valor");
+  var inputPago = document.getElementById("input-pago");
+  var vueltoValor = document.getElementById("vuelto-valor");
+
+  function calcularTotal(){
+    var total = 0;
+    productos.forEach(function(producto){
+      var cantidad = cantidades[producto.id] || 0;
+      if(cantidad > 0){
+        total += cantidad * precioDe(producto);
+      }
+    });
+    return total;
+  }
+
+  function renderTicket(){
+    lineasTicket.innerHTML = "";
+    var hayItems = false;
+
+    productos.forEach(function(producto){
+      var cantidad = cantidades[producto.id] || 0;
+      if(cantidad > 0){
+        hayItems = true;
+        var subtotal = cantidad * precioDe(producto);
+
+        var linea = document.createElement("div");
+        linea.className = "linea-item";
+
+        var desc = document.createElement("span");
+        desc.className = "desc";
+        desc.innerHTML = '<span class="cant">' + cantidad + "×</span> " + producto.nombre;
+
+        var sub = document.createElement("span");
+        sub.className = "subtotal";
+        sub.textContent = formatoMoneda(subtotal);
+
+        linea.appendChild(desc);
+        linea.appendChild(sub);
+        lineasTicket.appendChild(linea);
+      }
+    });
+
+    if(!hayItems){
+      lineasTicket.innerHTML = '<div class="linea-vacia">Aún no has elegido productos.</div>';
+    }
+
+    var total = calcularTotal();
+    totalValor.textContent = formatoMoneda(total);
+    actualizarVuelto(total);
+  }
+
+  function actualizarVuelto(total){
+    var pago = parseFloat(inputPago.value);
+    if(isNaN(pago)){
+      vueltoValor.textContent = formatoMoneda(0);
+      vueltoValor.className = "valor ok";
+      return;
+    }
+    var vuelto = pago - total;
+    if(vuelto < 0){
+      vueltoValor.textContent = "Faltan " + formatoMoneda(Math.abs(vuelto));
+      vueltoValor.className = "valor falta";
+    } else {
+      vueltoValor.textContent = formatoMoneda(vuelto);
+      vueltoValor.className = "valor ok";
+    }
+  }
+
+  inputPago.addEventListener("input", function(){
+    actualizarVuelto(calcularTotal());
+  });
+
+  document.getElementById("btn-limpiar").addEventListener("click", function(){
+    cantidades = {};
+    inputPago.value = "";
+    renderGridProductos();
+    renderTicket();
+  });
+
+  document.getElementById("btn-cobrar").addEventListener("click", function(){
+    var total = calcularTotal();
+    if(total === 0){
+      mostrarToast("No hay ningún producto en el pedido.");
+      return;
+    }
+    mostrarToast("Cobrado: " + formatoMoneda(total));
+    cantidades = {};
+    inputPago.value = "";
+    renderGridProductos();
+    renderTicket();
+  });
+
+  /* ---------- Gestión de productos ---------- */
+
+  var tablaProductos = document.getElementById("tabla-productos");
+
+  function renderTablaProductos(){
+    tablaProductos.innerHTML = "";
+
+    if(productos.length === 0){
+      tablaProductos.innerHTML = '<div class="vacio">No hay productos todavía. Agrega el primero arriba.</div>';
+      return;
+    }
+
+    productos.forEach(function(producto){
+      var fila = document.createElement("div");
+      fila.className = "fila-producto";
+
+      var colNombre = document.createElement("div");
+      var inputNombre = document.createElement("input");
+      inputNombre.type = "text";
+      inputNombre.value = producto.nombre;
+      inputNombre.addEventListener("change", function(){
+        producto.nombre = inputNombre.value.trim() || producto.nombre;
+        guardarProductos();
+        renderGridProductos();
+        renderTicket();
+      });
+      colNombre.appendChild(inputNombre);
+
+      var colServir = document.createElement("div");
+      var labelServir = document.createElement("span");
+      labelServir.className = "mini-label";
+      labelServir.textContent = "Precio servirse";
+      var inputServir = document.createElement("input");
+      inputServir.type = "number";
+      inputServir.step = "0.01";
+      inputServir.min = "0";
+      inputServir.value = producto.precioServir;
+      inputServir.addEventListener("change", function(){
+        var valor = parseFloat(inputServir.value);
+        producto.precioServir = isNaN(valor) ? 0 : valor;
+        guardarProductos();
+        renderGridProductos();
+        renderTicket();
+      });
+      colServir.appendChild(labelServir);
+      colServir.appendChild(inputServir);
+
+      var colLlevar = document.createElement("div");
+      var labelLlevar = document.createElement("span");
+      labelLlevar.className = "mini-label";
+      labelLlevar.textContent = "Precio para llevar";
+      var inputLlevar = document.createElement("input");
+      inputLlevar.type = "number";
+      inputLlevar.step = "0.01";
+      inputLlevar.min = "0";
+      inputLlevar.value = producto.precioLlevar;
+      inputLlevar.addEventListener("change", function(){
+        var valor = parseFloat(inputLlevar.value);
+        producto.precioLlevar = isNaN(valor) ? 0 : valor;
+        guardarProductos();
+        renderGridProductos();
+        renderTicket();
+      });
+      colLlevar.appendChild(labelLlevar);
+      colLlevar.appendChild(inputLlevar);
+
+      var colEliminar = document.createElement("div");
+      colEliminar.className = "col-eliminar";
+      var btnEliminar = document.createElement("button");
+      btnEliminar.className = "btn-eliminar";
+      btnEliminar.textContent = "Eliminar";
+      btnEliminar.addEventListener("click", function(){
+        productos = productos.filter(function(p){ return p.id !== producto.id; });
+        delete cantidades[producto.id];
+        guardarProductos();
+        renderTablaProductos();
+        renderGridProductos();
+        renderTicket();
+        mostrarToast("Producto eliminado.");
+      });
+      colEliminar.appendChild(btnEliminar);
+
+      fila.appendChild(colNombre);
+      fila.appendChild(colServir);
+      fila.appendChild(colLlevar);
+      fila.appendChild(colEliminar);
+      tablaProductos.appendChild(fila);
+    });
+  }
+
+  document.getElementById("btn-agregar-producto").addEventListener("click", function(){
+    var nombreInput = document.getElementById("nuevo-nombre");
+    var servirInput = document.getElementById("nuevo-servir");
+    var llevarInput = document.getElementById("nuevo-llevar");
+
+    var nombre = nombreInput.value.trim();
+    var servir = parseFloat(servirInput.value);
+    var llevar = parseFloat(llevarInput.value);
+
+    if(!nombre){
+      mostrarToast("Escribe un nombre para el producto.");
+      return;
+    }
+    if(isNaN(servir) || isNaN(llevar)){
+      mostrarToast("Ingresa ambos precios.");
+      return;
+    }
+
+    var id = "p" + Date.now();
+    productos.push({ id: id, nombre: nombre, precioServir: servir, precioLlevar: llevar });
+    guardarProductos();
+
+    nombreInput.value = "";
+    servirInput.value = "";
+    llevarInput.value = "";
+    nombreInput.focus();
+
+    renderTablaProductos();
+    renderGridProductos();
+    mostrarToast("Producto agregado.");
+  });
+
+  /* ---------- Fecha ---------- */
+
+  function pintarFecha(){
+    var hoy = new Date();
+    var opciones = { weekday: "long", day: "numeric", month: "long" };
+    var texto = hoy.toLocaleDateString("es-EC", opciones);
+    document.getElementById("fecha-hoy").textContent = texto.charAt(0).toUpperCase() + texto.slice(1);
+  }
+
+  /* ---------- Inicio ---------- */
+
+  cargarProductos();
+  pintarFecha();
+  renderGridProductos();
+  renderTicket();
+
+})();
+</script>
+
+</body>
+</html>
