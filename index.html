@@ -500,9 +500,105 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  /* ---------- Config Firebase ---------- */
+
+  .btn-config{
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-s);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-config:hover{ color: var(--text); border-color: var(--accent-dim); }
+
+  .config-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(10,12,10,0.88);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .config-overlay.mostrar{ display: flex; }
+
+  .config-caja{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    padding: 28px;
+    max-width: 480px;
+    width: 100%;
+  }
+
+  .config-caja h2{
+    font-family: var(--serif);
+    font-size: 20px;
+    margin: 0 0 10px;
+  }
+
+  .config-caja p{
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0 0 14px;
+  }
+
+  .config-caja code{
+    color: var(--accent);
+    font-size: 12.5px;
+  }
+
+  .config-caja textarea{
+    width: 100%;
+    min-height: 160px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    color: var(--text);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12.5px;
+    padding: 12px;
+    resize: vertical;
+    margin-bottom: 14px;
+  }
+
+  .config-caja textarea:focus{
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+
+  .config-nota{
+    font-size: 11.5px;
+    margin: 12px 0 0;
+  }
 </style>
 </head>
 <body>
+
+<div class="config-overlay" id="config-overlay">
+  <div class="config-caja">
+    <h2>Conectar con Firebase</h2>
+    <p>Pega aquí el bloque <code>firebaseConfig</code> completo, tal como lo copias de la consola de Firebase (Configuración del proyecto → General → Tus apps).</p>
+    <textarea id="config-texto" placeholder='const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  ...
+};'></textarea>
+    <button class="btn primario" id="btn-guardar-config" style="width:100%;">Guardar y conectar</button>
+    <p class="config-nota">Esto se guarda solo en este navegador/dispositivo. Si usas otra tablet o celular, tendrás que pegarlo ahí también.</p>
+  </div>
+</div>
 
 <header>
   <div class="brand">
@@ -517,6 +613,7 @@
     <button id="modo-servir" class="active">Servirse</button>
     <button id="modo-llevar">Para llevar</button>
   </div>
+  <button class="btn-config" id="btn-abrir-config" title="Configuración de Firebase">⚙</button>
 </header>
 
 <main id="vista-vender" class="active">
@@ -576,19 +673,10 @@
 <script>
 (function(){
 
-  var firebaseConfig = {
-    apiKey: "AIzaSyBAL_1KgUhVKMDaa7R1SOOIbqp2Nf1czHo",
-    authDomain: "luiguies-2f628.firebaseapp.com",
-    projectId: "luiguies-2f628",
-    storageBucket: "luiguies-2f628.firebasestorage.app",
-    messagingSenderId: "362296915404",
-    appId: "1:362296915404:web:78874f2afc20f36b2d1969",
-    measurementId: "G-92T7GDZMQN"
-  };
+  var CONFIG_KEY = "pos_firebase_config";
 
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.firestore();
-  var coleccionProductos = db.collection("pos_productos");
+  var db = null;
+  var coleccionProductos = null;
 
   var productosSemilla = [
     { nombre: "Encebollado pequeño", precioServir: 2.00, precioLlevar: 2.25 },
@@ -601,7 +689,59 @@
   var modo = "servir";
   var productosListos = false;
 
-  function escucharProductos(){
+  function parsearConfigPegada(texto){
+    var limpio = texto.trim()
+      .replace(/^(const|let|var)\s+firebaseConfig\s*=\s*/, "")
+      .replace(/;\s*$/, "");
+    var config = (new Function("return (" + limpio + ")"))();
+    if(!config || !config.apiKey || !config.projectId){
+      throw new Error("Falta apiKey o projectId");
+    }
+    return config;
+  }
+
+  function iniciarFirebase(config){
+    if(firebase.apps && firebase.apps.length){
+      firebase.app().delete().then(function(){
+        firebase.initializeApp(config);
+        continuarConFirebase();
+      });
+    } else {
+      firebase.initializeApp(config);
+      continuarConFirebase();
+    }
+  }
+
+  function continuarConFirebase(){
+    db = firebase.firestore();
+    coleccionProductos = db.collection("pos_productos");
+    document.getElementById("config-overlay").classList.remove("mostrar");
+    gridProductos.innerHTML = '<div class="vacio">Cargando productos…</div>';
+    escucharProductos();
+  }
+
+  var overlayConfig = document.getElementById("config-overlay");
+  var textoConfig = document.getElementById("config-texto");
+
+  document.getElementById("btn-guardar-config").addEventListener("click", function(){
+    try{
+      var config = parsearConfigPegada(textoConfig.value);
+      try{ localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); } catch(e){ /* sin almacenamiento persistente, sigue solo esta sesión */ }
+      iniciarFirebase(config);
+      mostrarToast("Conectado a Firebase.");
+    } catch(error){
+      mostrarToast("Esa configuración no es válida. Revísala y pégala de nuevo.");
+      console.error(error);
+    }
+  });
+
+  document.getElementById("btn-abrir-config").addEventListener("click", function(){
+    try{
+      var guardada = localStorage.getItem(CONFIG_KEY);
+      if(guardada){ textoConfig.value = guardada; }
+    } catch(e){ /* nada guardado */ }
+    overlayConfig.classList.add("mostrar");
+  });
     coleccionProductos.orderBy("creado", "asc").onSnapshot(function(snapshot){
       productos = snapshot.docs.map(function(doc){
         var datos = doc.data();
@@ -1007,8 +1147,17 @@
   /* ---------- Inicio ---------- */
 
   pintarFecha();
-  gridProductos.innerHTML = '<div class="vacio">Cargando productos…</div>';
-  escucharProductos();
+
+  (function iniciar(){
+    try{
+      var guardada = localStorage.getItem(CONFIG_KEY);
+      if(guardada){
+        iniciarFirebase(JSON.parse(guardada));
+        return;
+      }
+    } catch(e){ /* nada guardado o inválido, se pide de nuevo */ }
+    overlayConfig.classList.add("mostrar");
+  })();
 
 })();
 </script>
