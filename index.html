@@ -170,6 +170,38 @@
 
   /* ---------- Product grid ---------- */
 
+  .columna-productos{
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .filtro-categorias{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip-categoria{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 999px;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .chip-categoria:hover{ border-color: var(--accent-dim); }
+
+  .chip-categoria.active{
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #201207;
+  }
+
   .grid-productos{
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -384,13 +416,28 @@
 
   .fila-form{
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr auto;
+    grid-template-columns: 1.3fr 0.9fr 0.9fr 0.9fr auto;
     gap: 12px;
     align-items: end;
   }
 
-  @media (max-width: 700px){
+  @media (max-width: 760px){
     .fila-form{ grid-template-columns: 1fr 1fr; }
+  }
+
+  .campo select{
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    color: var(--text);
+    font-size: 14px;
+    padding: 9px 10px;
+  }
+
+  .campo select:focus{
+    outline: none;
+    border-color: var(--accent-dim);
   }
 
   .campo label{
@@ -427,18 +474,19 @@
     border-radius: var(--radius-m);
     padding: 14px 16px;
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr auto;
+    grid-template-columns: 1.2fr 0.8fr 0.8fr 0.9fr auto;
     gap: 12px;
     align-items: center;
   }
 
-  @media (max-width: 700px){
+  @media (max-width: 760px){
     .fila-producto{ grid-template-columns: 1fr 1fr; }
     .fila-producto .col-eliminar{ grid-column: span 2; }
   }
 
   .fila-producto input[type="text"],
-  .fila-producto input[type="number"]{
+  .fila-producto input[type="number"],
+  .fila-producto select{
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -448,7 +496,8 @@
     padding: 8px 10px;
   }
 
-  .fila-producto input:focus{
+  .fila-producto input:focus,
+  .fila-producto select:focus{
     outline: none;
     border-color: var(--accent-dim);
   }
@@ -520,7 +569,15 @@
 </header>
 
 <main id="vista-vender" class="active">
-  <section class="grid-productos" id="grid-productos"></section>
+  <div class="columna-productos">
+    <div class="filtro-categorias" id="filtro-categorias">
+      <button class="chip-categoria active" data-categoria="todos">Todos</button>
+      <button class="chip-categoria" data-categoria="encebollados">Encebollados</button>
+      <button class="chip-categoria" data-categoria="refrescos">Refrescos</button>
+      <button class="chip-categoria" data-categoria="adicionales">Adicionales</button>
+    </div>
+    <section class="grid-productos" id="grid-productos"></section>
+  </div>
 
   <aside class="ticket">
     <h2>Pedido actual</h2>
@@ -564,6 +621,14 @@
         <label for="nuevo-llevar">Precio para llevar</label>
         <input type="number" id="nuevo-llevar" step="0.01" min="0" placeholder="0.00">
       </div>
+      <div class="campo">
+        <label for="nuevo-categoria">Categoría</label>
+        <select id="nuevo-categoria">
+          <option value="encebollados">Encebollados</option>
+          <option value="refrescos">Refrescos</option>
+          <option value="adicionales">Adicionales</option>
+        </select>
+      </div>
       <button class="btn primario" id="btn-agregar-producto" style="height:38px;">Agregar producto</button>
     </div>
   </div>
@@ -591,14 +656,15 @@
   var coleccionProductos = db.collection("pos_productos");
 
   var productosSemilla = [
-    { nombre: "Encebollado pequeño", precioServir: 2.00, precioLlevar: 2.25 },
-    { nombre: "Encebollado grande",   precioServir: 2.50, precioLlevar: 2.75 },
-    { nombre: "Encebollado llena",    precioServir: 3.75, precioLlevar: 4.00 }
+    { nombre: "Encebollado pequeño", precioServir: 2.00, precioLlevar: 2.25, categoria: "encebollados" },
+    { nombre: "Encebollado grande",   precioServir: 2.50, precioLlevar: 2.75, categoria: "encebollados" },
+    { nombre: "Encebollado llena",    precioServir: 3.75, precioLlevar: 4.00, categoria: "encebollados" }
   ];
 
   var productos = [];
   var cantidades = {};
   var modo = "servir";
+  var categoriaFiltro = "todos";
   var productosListos = false;
 
   function escucharProductos(){
@@ -609,7 +675,8 @@
           id: doc.id,
           nombre: datos.nombre,
           precioServir: datos.precioServir,
-          precioLlevar: datos.precioLlevar
+          precioLlevar: datos.precioLlevar,
+          categoria: datos.categoria || "encebollados"
         };
       });
 
@@ -635,16 +702,18 @@
         nombre: producto.nombre,
         precioServir: producto.precioServir,
         precioLlevar: producto.precioLlevar,
+        categoria: producto.categoria,
         creado: firebase.firestore.FieldValue.serverTimestamp()
       }).catch(function(error){ console.error(error); });
     });
   }
 
-  function agregarProductoRemoto(nombre, precioServir, precioLlevar){
+  function agregarProductoRemoto(nombre, precioServir, precioLlevar, categoria){
     return coleccionProductos.add({
       nombre: nombre,
       precioServir: precioServir,
       precioLlevar: precioLlevar,
+      categoria: categoria,
       creado: firebase.firestore.FieldValue.serverTimestamp()
     });
   }
@@ -722,6 +791,16 @@
   /* ---------- Grilla de venta ---------- */
 
   var gridProductos = document.getElementById("grid-productos");
+  var chipsCategoria = document.querySelectorAll(".chip-categoria");
+
+  chipsCategoria.forEach(function(chip){
+    chip.addEventListener("click", function(){
+      categoriaFiltro = chip.getAttribute("data-categoria");
+      chipsCategoria.forEach(function(c){ c.classList.remove("active"); });
+      chip.classList.add("active");
+      renderGridProductos();
+    });
+  });
 
   function cambiarCantidad(id, delta){
     var actual = cantidades[id] || 0;
@@ -734,12 +813,21 @@
   function renderGridProductos(){
     gridProductos.innerHTML = "";
 
+    var listaFiltrada = categoriaFiltro === "todos"
+      ? productos
+      : productos.filter(function(p){ return p.categoria === categoriaFiltro; });
+
     if(productos.length === 0){
       gridProductos.innerHTML = '<div class="vacio">No hay productos todavía. Agrégalos en la sección "Productos".</div>';
       return;
     }
 
-    productos.forEach(function(producto){
+    if(listaFiltrada.length === 0){
+      gridProductos.innerHTML = '<div class="vacio">No hay productos en esta categoría todavía.</div>';
+      return;
+    }
+
+    listaFiltrada.forEach(function(producto){
       var cantidad = cantidades[producto.id] || 0;
 
       var card = document.createElement("div");
@@ -941,6 +1029,31 @@
       colLlevar.appendChild(labelLlevar);
       colLlevar.appendChild(inputLlevar);
 
+      var colCategoria = document.createElement("div");
+      var labelCategoria = document.createElement("span");
+      labelCategoria.className = "mini-label";
+      labelCategoria.textContent = "Categoría";
+      var selectCategoria = document.createElement("select");
+      [
+        { valor: "encebollados", texto: "Encebollados" },
+        { valor: "refrescos", texto: "Refrescos" },
+        { valor: "adicionales", texto: "Adicionales" }
+      ].forEach(function(opcion){
+        var option = document.createElement("option");
+        option.value = opcion.valor;
+        option.textContent = opcion.texto;
+        if(producto.categoria === opcion.valor){ option.selected = true; }
+        selectCategoria.appendChild(option);
+      });
+      selectCategoria.addEventListener("change", function(){
+        actualizarProductoRemoto(producto.id, { categoria: selectCategoria.value }).catch(function(error){
+          mostrarToast("No se pudo guardar la categoría.");
+          console.error(error);
+        });
+      });
+      colCategoria.appendChild(labelCategoria);
+      colCategoria.appendChild(selectCategoria);
+
       var colEliminar = document.createElement("div");
       colEliminar.className = "col-eliminar";
       var btnEliminar = document.createElement("button");
@@ -960,6 +1073,7 @@
       fila.appendChild(colNombre);
       fila.appendChild(colServir);
       fila.appendChild(colLlevar);
+      fila.appendChild(colCategoria);
       fila.appendChild(colEliminar);
       tablaProductos.appendChild(fila);
     });
@@ -969,10 +1083,12 @@
     var nombreInput = document.getElementById("nuevo-nombre");
     var servirInput = document.getElementById("nuevo-servir");
     var llevarInput = document.getElementById("nuevo-llevar");
+    var categoriaInput = document.getElementById("nuevo-categoria");
 
     var nombre = nombreInput.value.trim();
     var servir = parseFloat(servirInput.value);
     var llevar = parseFloat(llevarInput.value);
+    var categoria = categoriaInput.value;
 
     if(!nombre){
       mostrarToast("Escribe un nombre para el producto.");
@@ -983,7 +1099,7 @@
       return;
     }
 
-    agregarProductoRemoto(nombre, servir, llevar).then(function(){
+    agregarProductoRemoto(nombre, servir, llevar, categoria).then(function(){
       nombreInput.value = "";
       servirInput.value = "";
       llevarInput.value = "";
